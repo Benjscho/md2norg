@@ -6,6 +6,11 @@ use clap::Parser;
 use regex::Regex;
 use walkdir::WalkDir;
 
+/// md2norg - a markdown to neorg file converter.
+///
+/// This tool converts notes kept in a markdown format to neorg (.norg). This is
+/// primarily handy if you have a bunch of notes in Obsidian that you want to
+/// import into a neorg workspace.
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
@@ -13,21 +18,14 @@ struct Args {
     #[arg(short, long)]
     input: String,
 
-    /// Output directory for converted files (optional)
+    /// Output directory for converted files (optional), otherwise existing
+    /// directory is used.
     #[arg(short, long)]
     output: Option<String>,
 
     /// Process subdirectories recursively
     #[arg(short, long)]
     recursive: bool,
-
-    /// Replace original files (requires confirmation unless --force is used)
-    #[arg(long)]
-    replace: bool,
-
-    /// Force replacement without confirmation
-    #[arg(short, long)]
-    force: bool,
 }
 
 fn main() -> Result<()> {
@@ -35,17 +33,6 @@ fn main() -> Result<()> {
 
     let input_dir = Path::new(&args.input);
     let output_dir = args.output.as_ref().map(Path::new);
-
-    if args.replace && !args.force {
-        println!("Warning: This will replace the original markdown files.");
-        println!("Are you sure you want to continue? (y/N)");
-        let mut input = String::new();
-        std::io::stdin().read_line(&mut input)?;
-        if !input.trim().eq_ignore_ascii_case("y") {
-            println!("Operation cancelled.");
-            return Ok(());
-        }
-    }
 
     let walker = if args.recursive {
         WalkDir::new(input_dir)
@@ -72,10 +59,6 @@ fn main() -> Result<()> {
             let converted = convert_markdown_to_neorg(&content)?;
 
             fs::write(&output_path, converted)?;
-
-            if args.replace {
-                fs::remove_file(path)?;
-            }
 
             println!("Converted: {} -> {}", path.display(), output_path.display());
         }

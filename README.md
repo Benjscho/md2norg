@@ -9,8 +9,8 @@ trust it. Please let me know if you find any bugs with a minimal repro in issues
 ## Features
 
 - Convert Markdown headings, code blocks, lists, and todos to Neorg format
-- Output to a new directory or replace original files
-- Process files recursively (optional)
+- Output to a new directory
+- Process dirs recursively
 
 ## Installation
 
@@ -51,10 +51,7 @@ cd md2norg
 cargo install --path ./
 ```
 
-
 ## Uninstallation
-
-### If installed using Option 1 (cargo install)
 
 To uninstall the converter, run:
 
@@ -82,18 +79,6 @@ md2norg --input /path/to/markdown/files --output /path/to/output/directory
 
 ```bash
 md2norg --input /path/to/markdown/files --output /path/to/output/directory --recursive
-```
-
-3. Replace original files (with confirmation):
-
-```bash
-md2norg --input /path/to/markdown/files --replace
-```
-
-4. Replace original files without confirmation:
-
-```bash
-md2norg --input /path/to/markdown/files --replace --force
 ```
 
 ## Contributing
