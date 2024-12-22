@@ -90,6 +90,14 @@ fn convert_markdown_to_neorg(content: &str) -> Result<String> {
     // Convert headings
     let heading_regex = Regex::new(r"^(#+)\s+(.*)$").unwrap();
 
+    // Convert Obsidian links
+    let obsidian_link_regex = Regex::new(r"\[\[([^\]]+)\]\]").unwrap();
+    let content = obsidian_link_regex.replace_all(content, |caps: &regex::Captures| {
+        let link_text = &caps[1];
+        // Keep the original casing and spaces
+        format!("{{:{}.norg:}}", link_text)
+    });
+
     for line in content.lines() {
         if let Some(caps) = heading_regex.captures(line) {
             let level = caps[1].len();
@@ -172,6 +180,14 @@ mod tests {
     fn test_preserve_non_converted_content() -> Result<()> {
         let markdown = "This is regular text.\n\nIt should be preserved as-is.";
         let expected = "This is regular text.\n\nIt should be preserved as-is.\n";
+        assert_eq!(convert_markdown_to_neorg(markdown)?, expected);
+        Ok(())
+    }
+
+    #[test]
+    fn test_convert_obsidian_links() -> Result<()> {
+        let markdown = "Check out [[My Page]] and [[Another Page With Spaces]]";
+        let expected = "Check out {:My Page.norg:} and {:Another Page With Spaces.norg:}\n";
         assert_eq!(convert_markdown_to_neorg(markdown)?, expected);
         Ok(())
     }
