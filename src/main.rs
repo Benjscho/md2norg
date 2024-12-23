@@ -73,13 +73,33 @@ fn convert_markdown_to_neorg(content: &str) -> Result<String> {
     // Convert headings
     let heading_regex = Regex::new(r"^(#+)\s+(.*)$").unwrap();
 
-    // Convert Obsidian links
-    let obsidian_link_regex = Regex::new(r"\[\[([^\]]+)\]\]").unwrap();
-    let content = obsidian_link_regex.replace_all(content, |caps: &regex::Captures| {
-        let link_text = &caps[1];
-        // Keep the original casing and spaces
-        format!("{{:{}.norg:}}", link_text)
-    });
+    let link_conversions = [
+        // Image link with title (must come before basic image link)
+        (r#"!\[([^\]]*)\]\(([^)]+)\s+"([^"]+)"\)"#, "{image:$2}[$1]"),
+        // Basic image link
+        (r"!\[([^\]]*)\]\(([^)]+)\)", "{image:$2}[$1]"),
+        // Reference-style image link
+        (r"!\[([^\]]*)\]\[([^\]]*)\]", "{image:$2}[$1]"),
+        // Basic Markdown link
+        (r"\[([^\]]+)\]\(([^)]+)\)", "{$2}[$1]"),
+        // Reference-style link
+        (r"\[([^\]]+)\]\[([^\]]*)\]", "{$2}[$1]"),
+        // Obsidian links
+        (r"\[\[([^\]]+)\]\]", "{:$1.norg:}"),
+        // Reference-style link definition
+        (
+            r#"(?m)^\[([^\]]+)\]:\s*(\S+)(?:\s+"([^"]+)")?"#,
+            "@$1 $2 $3",
+        ),
+        // Automatic links
+        (r"<(https?://[^>]+)>", "{$1}[$1]"),
+    ];
+
+    let mut content = content.to_string();
+    for (pattern, replacement) in link_conversions.iter() {
+        let re = Regex::new(pattern).unwrap();
+        content = re.replace_all(&content, *replacement).to_string();
+    }
 
     for line in content.lines() {
         if let Some(caps) = heading_regex.captures(line) {
@@ -172,6 +192,40 @@ mod tests {
         let markdown = "Check out [[My Page]] and [[Another Page With Spaces]]";
         let expected = "Check out {:My Page.norg:} and {:Another Page With Spaces.norg:}\n";
         assert_eq!(convert_markdown_to_neorg(markdown)?, expected);
+        Ok(())
+    }
+
+    #[test]
+    fn test_convert_markdown_links() -> Result<()> {
+        let input = r#"
+[Basic link](https://example.com)
+[Reference link][ref]
+[Implicit reference link][]
+<https://example.com>
+![Image](image.jpg)
+![Image with title](image.jpg "Title")
+![Reference image][img-ref]
+
+[ref]: https://example.com "Reference Title"
+[img-ref]: image.jpg "Image Reference Title"
+"#;
+
+        let expected_output = r#"
+{https://example.com}[Basic link]
+{ref}[Reference link]
+{}[Implicit reference link]
+{https://example.com}[https://example.com]
+{image:image.jpg}[Image]
+{image:image.jpg}[Image with title]
+{image:img-ref}[Reference image]
+
+@ref https://example.com Reference Title
+@img-ref image.jpg Image Reference Title
+"#;
+
+        let actual = convert_markdown_to_neorg(input)?;
+        println!("{}", &actual);
+        assert_eq!(actual, expected_output);
         Ok(())
     }
 }
